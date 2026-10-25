@@ -1,36 +1,54 @@
-# 麦麦搭子 · McDonald's Meal-Planning Agent Skill
+﻿# 麦麦搭子·省着吃（MaiMai Saver）
 
-> 独立的 Agent Skill 原型：帮助用户根据预算、口味、优惠信息和用餐人数规划麦当劳点单。**本项目不是麦当劳官方产品，也不代表拥有麦当劳内部 API 或订单系统权限。**
+独立参赛项目：基于麦当劳中国 MCP 开放服务，帮助用户核对可用工具返回的菜单/优惠信息、比较点单方案，并透明展示省钱计算。**本项目不是麦当劳官方产品，也不代表麦当劳背书。**
 
-## 能做什么
+## 当前能力
 
-- 根据人数、预算、饥饿程度和口味偏好整理点单方案。
-- 在用户提供菜单、价格或优惠截图/链接后，计算组合价格并比较方案。
-- 优先核对优惠券适用门店、时间、商品范围、起用门槛与叠加规则；缺少信息时明确标注待确认。
-- 输出“省钱优先 / 吃饱优先 / 均衡”多套方案，并说明计算过程。
-- 下单前列出商品、数量、价格假设和需要用户确认的事项。
+- 使用 Python 标准库实现 Streamable HTTP MCP 客户端：初始化、发现工具 Schema、按明确参数调用工具。
+- 根据服务实际返回的工具与报价进行核验；不硬编码或猜测官方工具名称、菜单、价格和优惠。
+- 对报价进行可复核排序，比较商品合计、优惠、配送费和实付金额（仅使用 MCP 返回字段）。
+- 提供 WorkBuddy / TRAE 接入说明、Agent Skill、离线单元测试和活动声明文件。
+- 不自动下单、付款、兑换积分或领取优惠券；会改变账户状态的操作必须先说明后果并取得用户明确确认。
 
-## 重要边界
+## 项目结构
 
-- 不声称实时掌握门店库存、实时价格或用户账户优惠；除非本次会话提供了可验证的数据源。
-- 不绕过登录、验证码、访问控制或平台限制，不抓取私人账户数据。
-- 不自动付款、不提交订单、不代替用户接受条款。最终下单由用户在官方渠道确认。
-- 对过敏原、营养和促销条件不作未经核实的保证；以官方页面和门店实际展示为准。
+- `SKILL.md`：根目录技能入口。
+- `skills/maimai-saver/SKILL.md`：详细工作流、安全与失败处理规则。
+- `src/mcp_client.py`：MCP Streamable HTTP 客户端。
+- `src/cli.py`：发现官方服务器工具，或按返回 Schema 手动调用工具。
+- `src/savings.py`：报价金额核算与排序。
+- `tests/`：离线单元测试。
+- `MCP_INTEGRATION.md`：WorkBuddy / TRAE 配置说明。
+- `mcp-config.example.json`：不含真实凭证的配置模板。
+- `CONTEST_DECLARATION.md`：项目活动声明。
 
-## 文件结构
+## 准备与测试
 
-- `SKILL.md`：Agent Skill 入口与执行流程。
-- `references/offer-checklist.md`：优惠核验清单。
-- `references/response-template.md`：标准输出模板。
-- `examples/sample-session.md`：示例对话。
+需要 Python 3.10+。在项目根目录运行：
 
-## 使用方式
+```powershell
+python -m unittest discover -s tests
+```
 
-将仓库中的 `SKILL.md` 与 `references/` 一并放入支持 Agent Skills 的工具/项目中，并按其官方文档配置技能目录。不同 Agent、MCP Host 对 Skill 的加载方式可能不同，请以对应产品文档为准。
+配置好个人 MCP Token 后，可在 PowerShell 当前会话中设置环境变量（不要把真实 Token 写入代码、仓库、截图或命令历史）：
 
-## 当前状态
+```powershell
+$env:MCD_MCP_TOKEN = "YOUR_MCP_TOKEN"
+python -m src.cli tools
+```
 
-这是一个可审阅、可继续迭代的 Skill 初始版本。它当前不包含麦当劳官方 MCP 服务端，也不内置真实下单接口。若要接入数据源，应先确认其官方授权、服务条款和 API 可用性，再实现并测试对应连接器。
+先运行 `tools` 查看服务实际公布的工具名称、描述和 `inputSchema`，再根据 Schema 决定是否调用。不要猜测参数或把示例当成真实服务响应。
+
+## 接入
+
+参考 [MCP_INTEGRATION.md](MCP_INTEGRATION.md) 和 `mcp-config.example.json`。官方服务端地址及鉴权方式以麦当劳 MCP 开放平台当前说明为准。真实配置文件应保留在本机并由 `.gitignore` 排除；公开仓库只提交占位符。
+
+## 安全边界
+
+- 不上传 Token、Cookie、手机号、地址、订单或账户数据。
+- 不绕过登录、验证码、访问控制或平台限制。
+- 对鉴权失败、网络错误、返回缺字段等情况如实报告；不伪造“连接成功”。
+- 任何会改变账户状态的动作均需用户明确确认；最终价格和优惠以官方渠道实际展示为准。
 
 ## License
 

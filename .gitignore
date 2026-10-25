@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.trae/mcp.json
+.workbuddy/
+workbuddy.md
+上传指南.md
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.DS_Store
+Thumbs.db

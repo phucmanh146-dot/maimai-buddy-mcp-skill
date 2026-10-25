@@ -1,0 +1,8 @@
+[project]
+name = "maimai-saver-mcp-skill"
+version = "1.0.0"
+description = "A safety-first savings assistant skill powered by McDonald's official MCP"
+requires-python = ">=3.10"
+
+[tool.unittest]
+start-directory = "tests"
