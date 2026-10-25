@@ -1,55 +1,62 @@
-﻿# 麦麦搭子·省着吃（MaiMai Saver）
+# 麦麦搭子 MaiMai Buddy
 
-独立参赛项目：基于麦当劳中国 MCP 开放服务，帮助用户核对可用工具返回的菜单/优惠信息、比较点单方案，并透明展示省钱计算。**本项目不是麦当劳官方产品，也不代表麦当劳背书。**
+麦当劳 MCP 驱动的预算优先点餐与省钱决策 Agent Skill。它把预算、人数、口味与限制转成可解释的候选组合，并要求在任何下单或支付动作前获得用户明确确认。
 
-## 当前能力
+> 本项目为独立参赛作品，非麦当劳官方产品。菜单、价格、库存、优惠及下单能力以官方 MCP 实时返回为准。未连通有效 Token 时不会伪造菜单或调用成功结果。
 
-- 使用 Python 标准库实现 Streamable HTTP MCP 客户端：初始化、发现工具 Schema、按明确参数调用工具。
-- 根据服务实际返回的工具与报价进行核验；不硬编码或猜测官方工具名称、菜单、价格和优惠。
-- 对报价进行可复核排序，比较商品合计、优惠、配送费和实付金额（仅使用 MCP 返回字段）。
-- 提供 WorkBuddy / TRAE 接入说明、Agent Skill、离线单元测试和活动声明文件。
-- 不自动下单、付款、兑换积分或领取优惠券；会改变账户状态的操作必须先说明后果并取得用户明确确认。
+## 功能
 
-## 项目结构
+- 预算优先：根据 MCP 实际返回的餐品与价格计算预算内组合。
+- 解释选择：展示组合总价、预算余额和价格依据；只有官方数据支持时才声称有优惠。
+- 尊重偏好：询问口味、忌口和是否接受替换。
+- 真实数据优先：服务端工具名称及参数以运行时发现的 schema 为准，不猜测未验证的工具。
+- 安全确认：订单、支付、取消等有副作用的操作必须先展示摘要并取得明确确认。
 
-- `SKILL.md`：根目录技能入口。
-- `skills/maimai-saver/SKILL.md`：详细工作流、安全与失败处理规则。
-- `src/mcp_client.py`：MCP Streamable HTTP 客户端。
-- `src/cli.py`：发现官方服务器工具，或按返回 Schema 手动调用工具。
-- `src/savings.py`：报价金额核算与排序。
-- `tests/`：离线单元测试。
-- `MCP_INTEGRATION.md`：WorkBuddy / TRAE 配置说明。
-- `mcp-config.example.json`：不含真实凭证的配置模板。
-- `CONTEST_DECLARATION.md`：项目活动声明。
+## 文件
 
-## 准备与测试
+- `SKILL.md`：Agent 技能说明和安全边界。
+- `src/maimai_buddy.py`：离线预算组合算法。
+- `tests/test_maimai_buddy.py`：单元测试。
+- `MCP_INTEGRATION.md`：官方 MCP 配置和调用流程。
+- `mcp-config.example.json`：脱敏配置示例。
+- `CONTEST_DECLARATION.md`：官方原版声明。
 
-需要 Python 3.10+。在项目根目录运行：
+## 配置官方 MCP
 
-```powershell
-python -m unittest discover -s tests
+官方 endpoint：`https://mcp.mcd.cn`。在支持 Streamable HTTP 的客户端配置：
+
+```json
+{
+  "mcpServers": {
+    "mcd-mcp": {
+      "type": "streamablehttp",
+      "url": "https://mcp.mcd.cn",
+      "headers": {
+        "Authorization": "Bearer ${MCD_MCP_TOKEN}"
+      }
+    }
+  }
+}
 ```
 
-配置好个人 MCP Token 后，可在 PowerShell 当前会话中设置环境变量（不要把真实 Token 写入代码、仓库、截图或命令历史）：
+通过官方渠道申请 Token，并在客户端的安全密钥管理中设置 `MCD_MCP_TOKEN`。若客户端不支持环境变量展开，请用客户端支持的 secret 配置方式。不要把真实 Token 提交到 Git。
 
-```powershell
-$env:MCD_MCP_TOKEN = "YOUR_MCP_TOKEN"
-python -m src.cli tools
+## 测试本地算法
+
+需要 Python 3.10+，无第三方依赖：
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
-先运行 `tools` 查看服务实际公布的工具名称、描述和 `inputSchema`，再根据 Schema 决定是否调用。不要猜测参数或把示例当成真实服务响应。
+```python
+from src.maimai_buddy import MenuItem, find_budget_combinations
+items = [MenuItem("示例餐品 A", 12.0), MenuItem("示例餐品 B", 8.0)]
+print(find_budget_combinations(items, budget=20.0, max_items=2))
+```
 
-## 接入
+示例名称和价格仅用于演示算法，不代表真实菜单或当前售价。实际使用时，必须将成功的官方 MCP 返回映射为 `MenuItem`。
 
-参考 [MCP_INTEGRATION.md](MCP_INTEGRATION.md) 和 `mcp-config.example.json`。官方服务端地址及鉴权方式以麦当劳 MCP 开放平台当前说明为准。真实配置文件应保留在本机并由 `.gitignore` 排除；公开仓库只提交占位符。
+## 真实接入边界
 
-## 安全边界
-
-- 不上传 Token、Cookie、手机号、地址、订单或账户数据。
-- 不绕过登录、验证码、访问控制或平台限制。
-- 对鉴权失败、网络错误、返回缺字段等情况如实报告；不伪造“连接成功”。
-- 任何会改变账户状态的动作均需用户明确确认；最终价格和优惠以官方渠道实际展示为准。
-
-## License
-
-MIT
+本仓库包含技能流程和本地算法；尚未证明当前环境已使用有效 Token 完成官方服务端实时调用。详见 [MCP 集成说明](MCP_INTEGRATION.md)。本地算法不会联网、申请 Token、生成菜单或调用支付/下单接口。
